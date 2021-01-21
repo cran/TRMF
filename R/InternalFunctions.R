@@ -1,0 +1,379 @@
+# Various internal functions
+
+# Create structures for eXternal Regressors
+Create_Xreg_Stuff =  function(ptr){
+  if(!is.null(ptr$xReg_model)){
+    ptr$xReg_model$XmInd = 1:ptr$Dims$numTS
+    # get size of external global regressors
+    if(!is.null(ptr$xReg_model$GlobalXReg)){
+      numGXR = dim(ptr$xReg_model$GlobalXReg)[2]
+    }else{
+      numGXR = 0
+    }
+
+    # get size of column-wise regressors
+    if(!is.null(ptr$xReg_model$ColumnwiseXReg)){
+      numCXR = dim(ptr$xReg_model$ColumnwiseXReg)[3]
+    }else{
+      numCXR = 0
+    }
+
+    numReg = numGXR+numCXR
+    ptr$xReg_model$numReg = numReg
+    ptr$xReg_model$Shift = 0*ptr$Weight
+    ptr$xReg_model$XregInd = 1:numReg
+    ptr$xReg_model$XmInd = numReg+ptr$xReg_model$XmInd
+    ptr$xReg_model$colnames = c(ptr$xReg_model$cxname,ptr$xReg_model$gxname)
+  }
+
+  # object not returned, uses environment for pointer like behavior
+}
+
+# Create constraint matrices for Fm
+
+Create_Fm_Stuff= function(ptr){
+
+  # Get sizes
+  totNum = ptr$Dims$numTS
+  if(!is.null(ptr$xReg_model)){
+    totNum = totNum + ptr$xReg_model$numReg
+  }
+
+
+  # Create L2 regularization matrix
+  rhs0 = rep(0,totNum)
+  Constraints = list()
+  Constraints$totNum = totNum
+  Constraints$LambdaI = diag(totNum)*ptr$Fm_Settings$lambda
+  Constraints$rhs0 = rhs0
+
+  if(ptr$Fm_Settings$type =="constrain"){
+    Constraints$E = matrix(1,1,totNum)
+    Constraints$G =  diag(totNum)
+    Constraints$H =  rhs0
+  }else if(ptr$Fm_Settings$type =="interval"){
+    ones = rep(1,totNum)
+    Constraints$G =  rbind(diag(x=1,nrow=totNum),diag(x=-1,nrow=totNum))
+    Constraints$H =  c(rhs0,-ones)
+  }
+
+  ptr$Fm_Settings$Constraints = Constraints
+
+  # object not returned, uses environment for pointer like behavior
+}
+
+# Create constraint matrices for Xm
+Create_Xm_Stuff= function(ptr){
+  # Get sizes
+  numTS = ptr$Dims$numTS
+  numRows = ptr$Dims$nrows
+  N  = numTS*numRows
+  numModels = length(ptr$Xm_models)
+
+  cnames=NULL
+
+  # Create overall regularization matrix
+  LHS0 = Matrix::Diagonal(n=N,x = 0)
+
+  # loop through create, expand and add constraint matrices
+  cnt = 0
+  for(k in 1:numModels){
+    xmod = ptr$Xm_models[[k]]
+    ModelConstraint = t(xmod$Rm)%*%xmod$Rm+t(xmod$WA)%*%xmod$WA
+    numLatentTS = xmod$model$numTS
+    inds = cnt+1:numLatentTS
+    oneszeros=rep(0,numTS)
+    oneszeros[inds] = 1
+    cnt = cnt + numLatentTS
+    LHS0 = LHS0 + ModelConstraint%x%Matrix::Diagonal(x=oneszeros)
+
+    # build model names
+    cnames = c(cnames,paste(paste0("M[",k,"]:"),xmod$model$colnames,sep=""))
+  }
+
+  # Add fields
+  ptr$Factors$Xm = matrix(0,nrow=numRows,ncol =numTS)
+  ptr$Xm_Settings$ConstraintM = LHS0
+  ptr$Xm_Settings$RHS = ptr$NormalizedData
+  ptr$Xm_Settings$colnames=cnames
+
+  # object not returned, uses environment for pointer like behavior
+}
+
+
+
+# Function for initialization, remove the effect of external regressors
+InitiallyRemoveXReg = function(ptr,ImputedM){
+
+  xreg_fit = ImputedM
+  numCol = ptr$Dims$ncols
+  numReg = ptr$xReg_model$numReg+1
+  LambdaI = diag(numReg)*ptr$Fm_Settings$lambda
+  rhs0 = rep(0,numReg)
+  intercept = rep(1,ptr$Dims$nrows)
+  type = ptr$Fm_Settings$type
+  if(ptr$Fm_Settings$type =="constrain"){
+    E = matrix(1,1,numReg)
+    G =  diag(numReg)
+    H =  rhs0
+  }else if(ptr$Fm_Settings$type =="interval"){
+    ones = rep(1,numReg)
+    G =  rbind(diag(x=1,nrow=numReg),diag(x=-1,nrow=numReg))
+    H =  c(rhs0,-ones)
+  }
+
+  lFm = matrix(0,numReg-1,numCol)
+
+  for(k in 1:numCol){
+    # loop over and fit each row
+    wt = ptr$Weight[,k]
+    Y = c(wt*ptr$NormalizedData[,k],rhs0)
+    X = rbind(wt*cbind(intercept,ptr$xReg_model$ColumnwiseXReg[,k,],ptr$xReg_model$GlobalXReg),LambdaI)
+
+
+    # Type of regression
+    if(type=="nnls"){
+      fm =limSolve::nnls(X,Y)$X # nonnegative
+    }
+    else if(type=="l2"){
+      fm = limSolve::Solve(X,Y) # ridge regression
+    }
+    else if(type=="constrain"){
+      fm= limSolve::lsei(A=X,B=Y,E=E,F=1,G=G,H=H)$X
+    }
+    else if(type=="interval"){
+      fm= limSolve::lsei(A=X,B=Y,G=G,H=H,type=2)$X
+    }
+
+    # get fit
+    fm[1]=0 # take out impact of intercept (make this an option?)
+    newX = cbind(intercept,ptr$xReg_model$ColumnwiseXReg[,k,],ptr$xReg_model$GlobalXReg)
+    xreg_fit[,k] =newX%*%fm
+    lFm[,k] = fm[-1]
+  }
+
+  ind = ptr$xReg_model$XregInd
+  ptr$xReg_model$Shift = xreg_fit
+  ptr$Factors$Fm = lFm
+  # object not returned, uses environment for pointer-like behavior
+
+
+}
+
+# Initialize ALS iteration
+InitializeALS= function(ptr){
+
+  # Get needed stuff
+  M = ptr$NormalizedData
+  PD = ptr$HadamardProjection
+  numTS = ptr$Dims$numTS
+  ncol = dim(M)[2]
+  nrow = dim(M)[1]
+  if(any(PD==0)){
+    M[PD==0]=NA # don't average these
+  }
+
+  # Impute missing values with averages (iteration 1)
+  rs = rowMeans(M,na.rm=TRUE)
+  rs[rs==0|is.na(rs)] = 1
+  ImputeM = M/rs
+  cs = colMeans(ImputeM,na.rm=TRUE)
+  cs[cs==0|is.na(cs)]=1
+  ImputeM = rs%*%t(cs)
+  ind=is.na(M)
+  M[ind]=ImputeM[ind]
+
+  # SVD to impute (iteration 2)
+  num = min(2,dim(M))
+  out = svd(M,nu=num,nv=num)
+  ImputeM = out$u%*%diag(x=out$d[1:num],nrow=num)%*%t(out$v)
+  M[ind]=ImputeM[ind]
+
+  # If we have regressors subtract out their influence first
+  if(!is.null(ptr$xReg_model)){
+    InitiallyRemoveXReg(ptr,ImputeM)
+    lFm = ptr$Factors$Fm
+    M = M - ptr$xReg_model$Shift
+  }else{
+    lFm = NULL
+  }
+
+  # If we only have one latent time-series, just return 1s
+  if(numTS==1){
+    Fm = matrix(1,ncol,1) 
+    ptr$Factors$Fm =  rbind(lFm,t(Fm))
+    return(NULL)
+  }
+  
+  # SVD to initialize (iteration 3)
+  out = svd(M,nu=0,nv=numTS)
+
+  Fm = matrix(0.1,ncol,numTS) # fill matrix in case there is more models then time series
+  Fm[1:dim(out$v)[1],] = out$v
+
+
+  # Format according to regularization type...
+  if(ptr$Fm_Settings$type=="nnls"){
+    Fm = Fm+0.1
+    Fm[Fm<0]=0
+    Fm = Fm+0.001
+  }else if(ptr$Fm_Settings$type=="constrain"){
+    Fm = Fm+abs(min(Fm))+.001
+    Fm = Fm/rowSums(Fm)
+  }else if(ptr$Fm_Settings$type=="interval"){
+    Fm = Fm+0.1
+    Fm[Fm<0]=0
+    Fm = Fm+0.01
+    Fm[Fm>1] = 1
+  }
+
+
+  # add external regressors
+  ptr$Factors$Fm =  rbind(lFm,t(Fm))
+
+}
+
+# Remove effect of external regressors based on prefit Fm coefficients
+Get_XReg_fit= function(ptr){
+  if(!is.null(ptr$xReg_model)){
+    numCol = ptr$Dims$ncols
+    ind = ptr$xReg_model$XregInd
+     for(k in 1:numCol){
+      newX = cbind(ptr$xReg_model$ColumnwiseXReg[,k,],ptr$xReg_model$GlobalXReg)
+      ptr$xReg_model$Shift[,k] = newX%*%ptr$Factors$Fm[ind,k]
+    }
+  }
+
+  # object not returned, uses environment for pointer like behavior
+}
+
+# Put data and Fm matrix in proper format, solve
+# this should probably be sped up, using vec or something
+# This is the slowest part
+FitXm = function(ptr){
+
+  # adjust out external regressors if we have them
+  if(!is.null(ptr$xReg_model)){
+    ptr$Xm_Settings$RHS = ptr$NormalizedData-ptr$xReg_model$Shift
+    tempFm = ptr$Factors$Fm[ptr$xReg_model$XmInd,]
+  }else{
+    tempFm = ptr$Factors$Fm
+  }
+
+
+  # rename stuff (should be fine with "copy on modify" semantics)
+  nr = dim(ptr$Xm_Settings$ConstraintM)[1]  # Get matrix size
+  wYdata = ptr$Weight*ptr$Xm_Settings$RHS
+
+  numTS = ptr$Dims$numTS
+  nRows = ptr$Dims$nrows
+  nCols = ptr$Dims$ncols
+  list_LHS = list()
+  list_RHS = list()
+
+  # loop over and build large vectorized matrix system
+  for(k in 1:nRows){
+    wtFm = tempFm%*%diag(x=ptr$Weight[k,])
+    list_LHS[[k]] = tcrossprod(wtFm)
+    list_RHS[[k]] = wtFm%*%wYdata[k,]
+  }
+
+  LHS =  Matrix::.bdiag(list_LHS)
+  RHS =  do.call("c",list_RHS)
+
+  # solve and store
+  Xmv = Matrix::solve((LHS+ptr$Xm_Settings$ConstraintM),RHS)
+  ptr$Factors$Xm = t(matrix(Xmv,nrow=numTS,ncol=nRows,byrow=FALSE))
+
+  # object not returned, uses environment for pointer like behavior
+}
+
+# Fit constrained least squares to find Fm matrix
+FitFm = function(ptr){
+
+  numCol = ptr$Dims$ncols
+  numRow = ptr$Fm_Settings$Constraints$totNum
+
+  # Rename for simplicity (should be fine with "copy on modify" semantics)
+  type = ptr$Fm_Settings$type
+  LambdaI = ptr$Fm_Settings$Constraints$LambdaI
+  rhs0 = ptr$Fm_Settings$Constraints$rhs0
+  E = ptr$Fm_Settings$Constraints$E
+  G = ptr$Fm_Settings$Constraints$G
+  H = ptr$Fm_Settings$Constraints$H
+
+  cXreg = ptr$xReg_model$ColumnwiseXReg
+  gXreg = ptr$xReg_model$GlobalXReg
+  Xm = ptr$Factors$Xm
+  Wt = ptr$Weight
+  Dm = ptr$NormalizedData
+
+
+    # loop over and fit each row
+  for(k in 1:numCol){
+    wt = Wt[,k]
+    Y = c(wt*Dm[,k],rhs0)
+    if(!is.null(ptr$xReg_model)){
+      X = rbind(wt*cbind(cXreg[,k,],gXreg,Xm),LambdaI)
+    }else{
+      X = rbind(wt*cbind(Xm),LambdaI)
+    }
+
+  # Type of regression
+    if(type=="nnls"){
+      fm =limSolve::nnls(X,Y)$X # nonnegative
+    }
+    else if(type=="l2"){
+      fm = limSolve::Solve(X,Y) # ridge regression
+    }
+    else if(type=="constrain"){
+      fm= limSolve::lsei(A=X,B=Y,E=E,F=1,G=G,H=H)$X
+    }
+    else if(type=="interval"){
+      fm= limSolve::lsei(A=X,B=Y,G=G,H=H,type=2)$X
+    }
+
+    ptr$Factors$Fm[,k] =  fm
+  }
+
+  # object not returned, uses environment for pointer like behavior
+}
+
+
+
+
+# Get the fitted values after the fact...
+FitAll = function(ptr){
+
+  # reconstruct matrix
+  numCol = ptr$Dims$ncols
+  fitted = 0*ptr$dataM
+  for(k in 1:numCol){
+    newX = cbind(ptr$xReg_model$ColumnwiseXReg[,k,],ptr$xReg_model$GlobalXReg,ptr$Factors$Xm)
+    fitted[,k] = newX%*%ptr$Factors$Fm[,k]
+  }
+
+  # rescale
+  Shift = attr(ptr$NormalizedData,"shift")
+  Scale = attr(ptr$NormalizedData,"scale")
+  Type = attr(ptr$NormalizedData,"scale_type")
+  ptr$Fit$fitted = unScale(fitted,Type,Scale=Scale,Shift=Shift)
+  ptr$Fit$resid = ptr$dataM-ptr$Fit$fitted
+
+  # Name Xm, Fm, fits,
+  rownames(ptr$Factors$Fm) = c(ptr$xReg_model$colnames,ptr$Xm_Settings$colnames)
+  colnames(ptr$Factors$Fm) = colnames(ptr$dataM)
+  rownames(ptr$Factors$Xm) = rownames(ptr$dataM)
+  colnames(ptr$Factors$Xm) = ptr$Xm_Settings$colnames
+  colnames(ptr$Fit$fitted) = colnames(ptr$dataM)
+  rownames(ptr$Fit$fitted) = rownames(ptr$dataM)
+  colnames(ptr$Fit$resid) = colnames(ptr$dataM)
+  rownames(ptr$Fit$resid) = rownames(ptr$dataM)
+
+
+  # object not returned, uses environment for pointer like behavior
+
+}
+
+
+
