@@ -10,7 +10,7 @@ FiniteDiffM = function(N,d){
   for(rw in 1:N){
     Dmat[rw,1:rw] = wt[(N-rw+1):N]
   }
-
+  
   # clear the first rows
   if(d>0){
     D = ceiling(d);
@@ -25,18 +25,18 @@ ExpSmMat = function(N,alpha,double=FALSE){
   alpha = max(alpha,0)
   k=N:1
   wt=(1-alpha)^k
-  mat = matrix(0,N,N)
+  mat = Matrix::Matrix(0,N,N,sparse=TRUE)
   mat[1,1]=1
   for(rw in 2:N){
     mat[rw,1:(rw-1)] = wt[(N-rw+2):N]
   }
   mat = mat/rowSums(mat)
-
+  
   if(double){
     mat = 2*mat-mat%*%mat # double (Browns) exponential smoothing
     mat[2,1:2] = c(0,1) # don't constrain initial slope
   }
-
+  
   # put in difference form
   ESM = diag(N)-mat
   return(ESM)
@@ -45,17 +45,17 @@ ExpSmMat = function(N,alpha,double=FALSE){
 
 # AR matrix
 ARmat = function(N,ar){
-
+  
   # initial stuff
-  mat = diag(N) # 1 - lagged...
+  mat = Matrix::Diagonal(N) # 1 - lagged...
   lngAR = length(ar)
   indset = (1:lngAR)-lngAR-1
-
+  
   # Not possible in this case
   if(lngAR>=N){
     return(0*mat)
   }
-
+  
   # cascade down
   for(rw in (lngAR+1):N){
     mat[rw,indset+rw] = -ar
@@ -67,7 +67,7 @@ ARmat = function(N,ar){
 
 # Create seasonal difference matrix
 Seasonal_DM= function(N,lag=12,sumFirst=TRUE){
-  Dm = diag(N)
+  Dm = Matrix::Diagonal(N)
   if( N <= lag){
     return(0*Dm)
   }
@@ -78,5 +78,3 @@ Seasonal_DM= function(N,lag=12,sumFirst=TRUE){
   }
   return(Dm)
 }
-
-

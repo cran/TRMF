@@ -37,7 +37,7 @@ Chad Hammerquist
 
 
 \seealso{
-\code{\link{train.TRMF}}, \code{\link{TRMF_coefficients}}, \code{\link{TRMF_trend}}
+\code{\link{train.TRMF}}, \code{\link{TRMF_columns}}, \code{\link{TRMF_trend}}
 }
 \examples{
 
@@ -48,7 +48,7 @@ Am = xm\%*\%fm+rnorm(210,0,.2)
 
 # create model
 obj = create_TRMF(Am)
-obj = TRMF_coefficients(obj,reg_type ="interval")
+obj = TRMF_columns(obj,reg_type ="interval")
 obj = TRMF_trend(obj,numTS=4,order=2)
 out = train(obj)
 plot(out)

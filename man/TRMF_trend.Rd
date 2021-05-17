@@ -33,7 +33,7 @@ Chad Hammerquist
 }
 
 \seealso{
-\code{\link{create_TRMF}}, \code{\link{TRMF_coefficients}}, \code{\link{TRMF_simple}}, \code{\link{TRMF_seasonal}}}
+\code{\link{create_TRMF}}, \code{\link{TRMF_columns}}, \code{\link{TRMF_simple}}, \code{\link{TRMF_seasonal}}}
 
 \examples{
 
@@ -44,7 +44,7 @@ Am = xm\%*\%fm+rnorm(210,0,.1)
 
 # create model
 obj = create_TRMF(Am)
-obj = TRMF_coefficients(obj,reg_type ="interval")
+obj = TRMF_columns(obj,reg_type ="interval")
 obj = TRMF_trend(obj,numTS=4,order=2,lambdaD=2)
 out = train(obj)
 plot(out)
@@ -53,7 +53,7 @@ plot(out)
 require(magrittr) # for pipes
 
 obj = create_TRMF(Am)\%>\%
-    TRMF_coefficients(reg_type ="interval")\%>\%
+    TRMF_columns(reg_type ="interval")\%>\%
     TRMF_trend(numTS=2,order=1,lambdaD=4)\%>\%
     TRMF_trend(numTS=2,order=2,lambdaD=4)\%>\%
     TRMF_trend(numTS=1,order=1.5)

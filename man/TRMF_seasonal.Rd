@@ -32,7 +32,7 @@ Chad Hammerquist
 }
 
 \seealso{
-\code{\link{create_TRMF}}, \code{\link{TRMF_coefficients}},\code{\link{TRMF_simple}}, \code{\link{TRMF_trend}}}
+\code{\link{create_TRMF}}, \code{\link{TRMF_columns}},\code{\link{TRMF_simple}}, \code{\link{TRMF_trend}}}
 
 \examples{
 # create test data
@@ -44,7 +44,7 @@ Am = xm\%*\%fm+rnorm(410,0,.1)
 
 # create model
 obj = create_TRMF(Am)
-obj = TRMF_coefficients(obj,reg_type ="interval")
+obj = TRMF_columns(obj,reg_type ="interval")
 obj = TRMF_trend(obj,numTS=3,order=2)
 obj = TRMF_seasonal(obj,numTS=1,freq=12,lambdaD=5)
 out = train(obj)

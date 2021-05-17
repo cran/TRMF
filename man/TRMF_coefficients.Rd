@@ -1,12 +1,18 @@
-\name{TRMF_coefficients}
+\name{TRMF_columns}
+\alias{TRMF_columns}
 \alias{TRMF_coefficients}
 %- also NEED an '\alias' for EACH other topic documented here.
 \title{
 Add regularization model to TRMF object
 }
 \description{
-Adds a regularization model to TRMF object created by \code{create_TRMF()} to constrain the fitting process of the coefficient matrix. }
+Adds a regularization model to TRMF object created by \code{create_TRMF()} to constrain the fitting process of the coefficient matrix. 
+
+\code{TRMF_coefficient} is a (soon to be deprecated) alias for \code{TRMF_columns}.
+}
 \usage{
+TRMF_columns(obj,
+    reg_type = c("l2", "nnls", "constrain", "interval", "none"), lambda = 0.0001)
 TRMF_coefficients(obj,
     reg_type = c("l2", "nnls", "constrain", "interval", "none"), lambda = 0.0001)
 }
@@ -48,7 +54,7 @@ Am = xm\%*\%fm+rnorm(210,0,.2)
 
 # create model
 obj = create_TRMF(Am)
-obj = TRMF_coefficients(obj,reg_type ="nnls")
+obj = TRMF_columns(obj,reg_type ="nnls")
 out = train(obj)
 plot(out)
 

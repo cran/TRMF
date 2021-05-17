@@ -36,9 +36,11 @@ NormalizeMatrix = function(X,method=c("standard","robust","range","none"),type=c
       scalar = 1
     }
     else{
-      stop(paste("Method: ",method," not an option for Scale()",sep="",collapse=""))
+      stop(paste("Method: ",method," not an option for NormalizeMatrix()",sep="",collapse=""))
     }
-
+    
+    # safely shift and scale
+    scalar[scalar==0|is.na(scalar)|is.infinite(scalar)]=1
     X  = (X-shift)/scalar
 
   }
@@ -62,15 +64,16 @@ NormalizeMatrix = function(X,method=c("standard","robust","range","none"),type=c
       shift = rmin
       scalar = rmax-rmin
 
-    } else{
-      stop(paste("Method: ",method," not an option for Scale()",sep="",collapse=""))
-    }
-
-    if(method == "none"){
+    }else if(method == "none"){
       shift[]=0
       scalar[]=1
     }
+    
+    else{
+      stop(paste("Method: ",method," not an option for NormalizeMatrix()",sep="",collapse=""))
+    }
 
+    scalar[scalar==0|is.na(scalar)|is.infinite(scalar)]=1
     X = sweep(X, dm, shift, `-`)
     X = sweep(X, dm, scalar, `/`)
   }

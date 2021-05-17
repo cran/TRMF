@@ -7,11 +7,26 @@ summary.TRMF = function(object,...){
     varResid = sd(object$Fit$resid,na.rm=TRUE)^2
     R2 = round(100*(1-varResid/varTot),2)
     cat("  A trained TRMF model that explains",R2,"% of the variance \n")
+    if(length(object$Weight)>1 & all(object$Weight==0|object$Weight==1)){
+      
+      sumW = object$Weight
+      wmean = sum(object$Weight*object$dataM,na.rm=TRUE)/sumW
+      zero_wmean = object$dataM-wmean
+      wvarTot = sd(object$Weight*zero_wmean,na.rm=TRUE)^2/sumW^2
+      
+      wmean = sum(object$Weight*object$Fit$resid,na.rm=TRUE)/sumW
+      zero_wmean = object$Fit$resid-wmean
+      wvarTot = sd(object$Weight*object$dataM,na.rm=TRUE)^2/sumW^2
+      
+      wvarResid = sd(object$Weight*object$Fit$resid,na.rm=TRUE)^2/sumW^2
+      wR2 = round(100*(1-wvarResid/wvarTot),2)
+     cat("                        ...and",wR2,"% of the weighted variance \n")
+    }
   }
   cat("------------------------------------------------------------------\n")
   if(!is.null(object$Fm_Settings)){
     cat("Fm = {")
-    cat("  Coefficient regularization type:",object$Fm_Settings$type," with lambda =",object$Fm_Settings$lambda," }\n")
+    cat("  Column regularization type:",object$Fm_Settings$type," with lambda =",object$Fm_Settings$lambda," }\n")
   }
   cat("\nXm = {")
   cat("  (",length(object$Xm_models),") time series models with a total of (",sep="")
@@ -177,7 +192,7 @@ components.TRMF = function(object,XorF=c("Xm","Fm"),...){
       return(object$Factors$Xm)
     }
     if(XorF == "fm"){
-      return(object$Factors$Xm)
+      return(object$Factors$Fm)
     }
   }
   return(NULL)

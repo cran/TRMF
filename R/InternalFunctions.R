@@ -69,37 +69,30 @@ Create_Xm_Stuff= function(ptr){
   numRows = ptr$Dims$nrows
   N  = numTS*numRows
   numModels = length(ptr$Xm_models)
-
+  
   cnames=NULL
-
-  # Create overall regularization matrix
-  LHS0 = Matrix::Diagonal(n=N,x = 0)
-
-  # loop through create, expand and add constraint matrices
-  cnt = 0
+  
+  # loop through and add constraint matrices, create overall regularization matrix
+  list_LHS = list()
   for(k in 1:numModels){
     xmod = ptr$Xm_models[[k]]
-    ModelConstraint = t(xmod$Rm)%*%xmod$Rm+t(xmod$WA)%*%xmod$WA
-    numLatentTS = xmod$model$numTS
-    inds = cnt+1:numLatentTS
-    oneszeros=rep(0,numTS)
-    oneszeros[inds] = 1
-    cnt = cnt + numLatentTS
-    LHS0 = LHS0 + ModelConstraint%x%Matrix::Diagonal(x=oneszeros)
-
+    ModelConstraint = crossprod(xmod$Rm)+crossprod(xmod$WA)
+    numTS = xmod$model$numTS
+    list_LHS[[k]] = Matrix::Diagonal(n=numTS)%x%ModelConstraint
+    
     # build model names
     cnames = c(cnames,paste(paste0("M[",k,"]:"),xmod$model$colnames,sep=""))
   }
-
+  
   # Add fields
   ptr$Factors$Xm = matrix(0,nrow=numRows,ncol =numTS)
-  ptr$Xm_Settings$ConstraintM = LHS0
-  ptr$Xm_Settings$RHS = ptr$NormalizedData
+  ptr$Xm_Settings$ConstraintM = Matrix::.bdiag(list_LHS)
+  ptr$Xm_Settings$RHS = c(ptr$NormalizedData*ptr$Weight)
+  ptr$Xm_Settings$W =c(ptr$Weight)
   ptr$Xm_Settings$colnames=cnames
-
+  
   # object not returned, uses environment for pointer like behavior
 }
-
 
 
 # Function for initialization, remove the effect of external regressors
@@ -170,28 +163,27 @@ InitializeALS= function(ptr){
   ncol = dim(M)[2]
   nrow = dim(M)[1]
   if(any(PD==0)){
-    M[PD==0]=NA # don't average these
-  }
+      M[PD==0]=NA # don't average these
 
-  # Impute missing values with averages (iteration 1)
-  rs = rowMeans(M,na.rm=TRUE)
-  rs[rs==0|is.na(rs)] = 1
-  ImputeM = M/rs
-  cs = colMeans(ImputeM,na.rm=TRUE)
-  cs[cs==0|is.na(cs)]=1
-  ImputeM = rs%*%t(cs)
-  ind=is.na(M)
-  M[ind]=ImputeM[ind]
+    # Impute missing values with averages (iteration 1)
+    rs = rowMeans(M,na.rm=TRUE)
+    rs[rs==0|is.na(rs)] = 1
+    ImputeM = M/rs
+    cs = colMeans(ImputeM,na.rm=TRUE)
+    cs[cs==0|is.na(cs)]=1
+    ImputeM = rs%*%t(cs)
+    ind=is.na(M)
+    M[ind]=ImputeM[ind]
 
-  # SVD to impute (iteration 2)
-  num = min(2,dim(M))
-  out = svd(M,nu=num,nv=num)
-  ImputeM = out$u%*%diag(x=out$d[1:num],nrow=num)%*%t(out$v)
-  M[ind]=ImputeM[ind]
-
+    # SVD to impute (iteration 2)
+    num = min(2,dim(M))
+    out = svd(M,nu=num,nv=num)
+    ImputeM = out$u%*%diag(x=out$d[1:num],nrow=num)%*%t(out$v)
+    M[ind]=ImputeM[ind]
+}
   # If we have regressors subtract out their influence first
   if(!is.null(ptr$xReg_model)){
-    InitiallyRemoveXReg(ptr,ImputeM)
+    InitiallyRemoveXReg(ptr,M)
     lFm = ptr$Factors$Fm
     M = M - ptr$xReg_model$Shift
   }else{
@@ -200,11 +192,11 @@ InitializeALS= function(ptr){
 
   # If we only have one latent time-series, just return 1s
   if(numTS==1){
-    Fm = matrix(1,ncol,1) 
+    Fm = matrix(1,ncol,1)
     ptr$Factors$Fm =  rbind(lFm,t(Fm))
     return(NULL)
   }
-  
+
   # SVD to initialize (iteration 3)
   out = svd(M,nu=0,nv=numTS)
 
@@ -248,43 +240,28 @@ Get_XReg_fit= function(ptr){
 }
 
 # Put data and Fm matrix in proper format, solve
-# this should probably be sped up, using vec or something
-# This is the slowest part
 FitXm = function(ptr){
-
+  
   # adjust out external regressors if we have them
   if(!is.null(ptr$xReg_model)){
-    ptr$Xm_Settings$RHS = ptr$NormalizedData-ptr$xReg_model$Shift
+    ptr$Xm_Settings$RHS = c(ptr$NormalizedData-ptr$xReg_model$Shift)
     tempFm = ptr$Factors$Fm[ptr$xReg_model$XmInd,]
   }else{
     tempFm = ptr$Factors$Fm
   }
-
-
-  # rename stuff (should be fine with "copy on modify" semantics)
-  nr = dim(ptr$Xm_Settings$ConstraintM)[1]  # Get matrix size
-  wYdata = ptr$Weight*ptr$Xm_Settings$RHS
-
-  numTS = ptr$Dims$numTS
+  
+  # Build relevant matrices
   nRows = ptr$Dims$nrows
-  nCols = ptr$Dims$ncols
-  list_LHS = list()
-  list_RHS = list()
-
-  # loop over and build large vectorized matrix system
-  for(k in 1:nRows){
-    wtFm = tempFm%*%diag(x=ptr$Weight[k,])
-    list_LHS[[k]] = tcrossprod(wtFm)
-    list_RHS[[k]] = wtFm%*%wYdata[k,]
-  }
-
-  LHS =  Matrix::.bdiag(list_LHS)
-  RHS =  do.call("c",list_RHS)
-
+  numTS = ptr$Dims$numTS
+  wYdata = ptr$Xm_Settings$RHS
+  wtFm = ptr$Xm_Settings$W*(t(tempFm)%x%Matrix::Diagonal(n=nRows))
+  LHS = crossprod(wtFm)
+  RHS = crossprod(wtFm,wYdata)
+  
   # solve and store
   Xmv = Matrix::solve((LHS+ptr$Xm_Settings$ConstraintM),RHS)
-  ptr$Factors$Xm = t(matrix(Xmv,nrow=numTS,ncol=nRows,byrow=FALSE))
-
+  ptr$Factors$Xm = matrix(Xmv,nrow=nRows,ncol=numTS) # fix this
+  
   # object not returned, uses environment for pointer like behavior
 }
 

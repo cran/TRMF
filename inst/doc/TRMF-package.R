@@ -8,7 +8,7 @@ knitr::opts_chunk$set(
 #  obj = create_TRMF(A)
 
 ## ----eval=FALSE---------------------------------------------------------------
-#  obj = TRMF_coefficients(obj,reg_type = "nnls",lambda=1)
+#  obj = TRMF_columns(obj,reg_type = "nnls",lambda=1)
 
 ## ----eval=FALSE---------------------------------------------------------------
 #  obj = TRMF_trend(obj,numTS = 2,order = 2,lambdaD=1)

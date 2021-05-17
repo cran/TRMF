@@ -51,7 +51,7 @@ TRMF_coefficients = function(obj,reg_type =c("l2","nnls","constrain","interval",
   
   # check object
   if(is.null(obj)||class(obj) != "TRMF"){
-    stop("TRMF_coefficients: Create a valid TRMF object first using TRMF_model()")
+    stop("TRMF_coefficients: Create a valid TRMF object first using create_TRMF()")
   }
   
   if(!is.null(obj$Fm_settings)){
@@ -78,12 +78,43 @@ TRMF_coefficients = function(obj,reg_type =c("l2","nnls","constrain","interval",
 }
 
 
+TRMF_columns = function(obj,reg_type =c("l2","nnls","constrain","interval","none"),lambda=0.0001){
+  
+  # check object
+  if(is.null(obj)||class(obj) != "TRMF"){
+    stop("TRMF_columns: Create a valid TRMF object first using create_TRMF()")
+  }
+  
+  if(!is.null(obj$Fm_settings)){
+    warning("TRMF_columns model already defined, overwriting")
+  }
+  
+  # screen constraint type
+  type = match.arg(reg_type)
+  if(!(type %in%c("l2","nnls","constrain","interval","none"))){
+    stop("TRMF_columns: columns regularization type not valid (at least not currently implemented)")
+    # could also add interval at some point.
+  }
+  
+  # verify lambda
+  if(type=="none"){
+    lambda=0
+  }
+  
+  
+  # update object
+  obj$Fm_Settings = list(type=type,lambda=lambda)
+  
+  return(obj)
+}
+
+
 # Add slope constraint model
 TRMF_trend = function(obj,numTS = 1,order = 1,lambdaD=1,lambdaA=0.0001,weight=1){
   
   # verify object
   if(is.null(obj)||class(obj) != "TRMF"){
-    stop("TRMF_trend: Create a valid TRMF object first using TRMF_model()")
+    stop("TRMF_trend: Create a valid TRMF object first using create_TRMF()")
   }
   
   if(any(is.infinite(weight))){
@@ -149,7 +180,7 @@ TRMF_simple = function(obj,numTS = 1,lambdaA=0.0001,weight=1){
   
   # verify object
   if(is.null(obj)||class(obj) != "TRMF"){
-    stop("TRMF_trend: Create a valid TRMF object first using TRMF_model()")
+    stop("TRMF_trend: Create a valid TRMF object first using create_TRMF()")
   }
   
   if(any(is.infinite(weight))){
@@ -204,7 +235,7 @@ TRMF_seasonal = function(obj,numTS = 1,freq = 12,sumFirst=FALSE,lambdaD=1,lambda
   
   # verify object
   if(is.null(obj)||class(obj) != "TRMF"){
-    stop("TRMF_seasonal: Create a valid TRMF object first using TRMF_model()")
+    stop("TRMF_seasonal: Create a valid TRMF object first using create_TRMF()")
   }
   
   if(any(is.infinite(weight))){
@@ -272,7 +303,7 @@ TRMF_ar = function(obj,numTS = 1,AR,lambdaD=1,lambdaA=0.0001,weight=1){
   
   # verify object
   if(is.null(obj)||class(obj) != "TRMF"){
-    stop("TRMF_AR: Create a valid TRMF object first using TRMF_model()")
+    stop("TRMF_AR: Create a valid TRMF object first using create_TRMF()")
   }
   
   if(any(is.infinite(weight))){
@@ -332,7 +363,7 @@ TRMF_es = function(obj,numTS = 1,alpha=1,es_type=c("single","double"),lambdaD=1,
   
   # verify object
   if(is.null(obj)||class(obj) != "TRMF"){
-    stop("TRMF_ES: Create a valid TRMF object first using TRMF_model()")
+    stop("TRMF_ES: Create a valid TRMF object first using create_TRMF()")
   }
   
   if(any(is.infinite(weight))){
@@ -401,7 +432,7 @@ TRMF_regression = function(obj,Xreg,type=c("global","columnwise")){
   
   # verify object
   if(is.null(obj)||class(obj) != "TRMF"){
-    stop("TRMF_Regression: Create a valid TRMF object first using TRMF_model()")
+    stop("TRMF_Regression: Create a valid TRMF object first using create_TRMF()")
   }
   
   if(any(is.infinite(Xreg))){
@@ -501,7 +532,7 @@ TRMF_regression = function(obj,Xreg,type=c("global","columnwise")){
 #train_TRMF = function(obj,numit=10){
   
 train.TRMF = function(x,numit=10,...){
-  
+  obj = x
   # check object to see if it valid object
   if(is.null(obj)||class(obj) != "TRMF"){
     # should never get here...
@@ -511,7 +542,7 @@ train.TRMF = function(x,numit=10,...){
   
   # if no models have been added, create a simple one
   if(is.null(obj$Fm_Settings)){
-    obj = TRMF_coefficients(obj)
+    obj = TRMF_columns(obj)
   }
   
   if(is.null(obj$Xm_models)){

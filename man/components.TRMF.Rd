@@ -30,7 +30,7 @@ Chad Hammerquist
 
 
 \seealso{
-\code{\link{create_TRMF}}, \code{\link{TRMF_coefficients}}, \code{\link{TRMF_trend}}}
+\code{\link{create_TRMF}}, \code{\link{TRMF_columns}}, \code{\link{TRMF_trend}}}
 
 \examples{
 # create test data

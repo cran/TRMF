@@ -10,6 +10,7 @@ export("create_TRMF")
 export("impute_TRMF")
 
 export("TRMF_coefficients")
+export("TRMF_columns")
 export("TRMF_trend")
 export("TRMF_simple")
 export("TRMF_seasonal")

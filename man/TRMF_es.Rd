@@ -34,7 +34,7 @@ Chad Hammerquist
 }
 
 \seealso{
-\code{\link{create_TRMF}}, \code{\link{TRMF_coefficients}}, \code{\link{TRMF_trend}},\code{\link{TRMF_seasonal}}}
+\code{\link{create_TRMF}}, \code{\link{TRMF_columns}}, \code{\link{TRMF_trend}},\code{\link{TRMF_seasonal}}}
 
 \examples{
 
