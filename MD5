@@ -1,10 +1,10 @@
-cc07f03a175362f618da3a23e45027da *DESCRIPTION
+4530523e526f629bd6277ec98ffaf245 *DESCRIPTION
 1654cdb7510b92314442e6015ecfdbc8 *NAMESPACE
 008efa09554dd5cf6f6317ebdd3fe0ae *NEWS.md
 bb1489b196da431c53a7d42b52a54d73 *R/ConstraintMatrices.R
 05e870954994df6685ef1af093f1672b *R/DataProcesssingFunctions.R
 caaf10380685a674fa918a9cba36734a *R/InternalFunctions.R
-2c51dc6fd6f11393c88c928dbdd2af2b *R/Methods.R
+2eb83c9e56ddaf77b067046e910f65f3 *R/Methods.R
 3884d15d6128869b93843a8d4757276b *R/TRMF.R
 82c5ac82eb52e8efcb818aa0281deb64 *build/vignette.rds
 c183fcc3daef19da74ddc9539a3dcce3 *inst/doc/TRMF-package.R
