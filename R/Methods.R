@@ -7,18 +7,17 @@ summary.TRMF = function(object,...){
     varResid = sd(object$Fit$resid,na.rm=TRUE)^2
     R2 = round(100*(1-varResid/varTot),2)
     cat("  A trained TRMF model that explains",R2,"% of the variance \n")
-    if(length(object$Weight)>1 & all(object$Weight==0|object$Weight==1)){
+    if(length(object$Weight)>1 & any(object$Weight!=1)){
       
       sumW = sum(object$Weight)
       wmean = sum(object$Weight*object$dataM,na.rm=TRUE)/sumW
       zero_wmean = object$dataM-wmean
-      wvarTot = sd(object$Weight*zero_wmean,na.rm=TRUE)^2/sumW^2
+      wvarTot = sum((object$Weight*zero_wmean)^2,na.rm=TRUE)/sumW^2
       
       wmean = sum(object$Weight*object$Fit$resid,na.rm=TRUE)/sumW
       zero_wmean = object$Fit$resid-wmean
-      wvarTot = sd(object$Weight*object$dataM,na.rm=TRUE)^2/sumW^2
+      wvarResid = sum((object$Weight*zero_wmean)^2,na.rm=TRUE)/sumW^2
       
-      wvarResid = sd(object$Weight*object$Fit$resid,na.rm=TRUE)^2/sumW^2
       wR2 = round(100*(1-wvarResid/wvarTot),2)
      cat("                        ... and",wR2,"% of the weighted variance \n")
     }

@@ -39,14 +39,14 @@ Chad Hammerquist
 \examples{
 
 # create test data
-xm = poly(x = (-10:10)/10,degree=4)
-fm = matrix(runif(40),4,10)
-Am = xm\%*\%fm+rnorm(210,0,.1)
+xm = matrix(rnorm(80),20,4)
+fm = matrix(rnorm(40),4,10)+1
+Am = xm\%*\%fm+rnorm(200,0,.1)
 
 # create model
 obj = create_TRMF(Am)
 obj = TRMF_columns(obj,reg_type ="interval")
-obj = TRMF_ar(obj,numTS=4,AR=c(0.5),lambdaD=4)
+obj = TRMF_ar(obj,numTS=2,AR=c(0.5),lambdaD=4)
 out = train(obj)
 plot(out)
 

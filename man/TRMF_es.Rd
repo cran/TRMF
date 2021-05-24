@@ -40,7 +40,7 @@ Chad Hammerquist
 
 # create test data
 xm = cbind(cumsum(rnorm(20)),cumsum(rnorm(20)))
-fm = matrix(runif(40),2,10)
+fm = matrix(runif(20),2,10)
 Am = xm\%*\%fm+rnorm(200,0,.2)
 
 # create model
