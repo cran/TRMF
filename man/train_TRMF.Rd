@@ -5,7 +5,7 @@
 \title{Train a TRMF model}
 
 \description{
-This function is the "engine"" of the TRMF package. It takes a previously created TRMF object and fits it to the data using an alternating least squares algorithm.
+This function is the "engine" of the TRMF package. It takes a previously created TRMF object and fits it to the data using an alternating least squares algorithm.
 }
 
 \usage{\method{train}{TRMF}(x, numit = 10, ...)}

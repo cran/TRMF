@@ -8,7 +8,10 @@ create_TRMF = function(dataM,weight=1,normalize=c("none","standard","robust","ra
   # Check NAs
   if(match.arg(na.action) == "fail"){
     if(any(is.na(dataM))){
-      stop("Missing values in object")
+      stop("Missing values in dataM")
+    }
+    if(any(is.na(weight))){
+      stop("Missing values in weight")
     }
   }
   
@@ -557,15 +560,22 @@ train.TRMF = function(x,numit=10,...){
   
   # Run ALS iteration
   InitializeALS(localEnv)
-  for(k in 1:numit){
+  if(numit<=0){      
     Get_XReg_fit(localEnv)
     FitXm(localEnv)
-    FitFm(localEnv)
   }
-  
-  
-  # get fit
-  FitAll(localEnv)
+  else{
+    for(k in 1:numit){
+      Get_XReg_fit(localEnv)
+      FitXm(localEnv)
+      FitFm(localEnv)
+    }
+  }
+    
+    # get fit
+    FitAll(localEnv)
+
+
   
   # format back as object
   newobj=as.list(localEnv)

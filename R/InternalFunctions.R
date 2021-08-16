@@ -244,7 +244,7 @@ FitXm = function(ptr){
   
   # adjust out external regressors if we have them
   if(!is.null(ptr$xReg_model)){
-    ptr$Xm_Settings$RHS = c(ptr$NormalizedData-ptr$xReg_model$Shift)
+    ptr$Xm_Settings$RHS = c(ptr$Weight*(ptr$NormalizedData-ptr$xReg_model$Shift))
     tempFm = ptr$Factors$Fm[ptr$xReg_model$XmInd,]
   }else{
     tempFm = ptr$Factors$Fm

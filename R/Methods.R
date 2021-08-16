@@ -196,3 +196,32 @@ components.TRMF = function(object,XorF=c("Xm","Fm"),...){
   }
   return(NULL)
 }
+
+
+retrain = function(obj,numit,fit_xm_first=TRUE){
+  
+  ptr = list2env(obj,envir = new.env())
+  
+  if(fit_xm_first){
+    step =c(expression(FitXm(ptr)),expression(FitFm(ptr)))
+  }else{
+    step =c(expression(FitFm(ptr)),expression(FitXm(ptr)))
+  }
+  
+  for(k in 1:numit){
+    Get_XReg_fit(ptr)
+    eval(step[1])
+    eval(step[2])
+  }
+  
+  # get the fit
+  FitAll(ptr)
+  
+
+  
+  # format back as object
+  newobj=as.list(ptr)
+  class(newobj) = class(obj)
+  return(newobj)
+}
+

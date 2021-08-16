@@ -3,7 +3,7 @@
 \alias{TRMF_coefficients}
 %- also NEED an '\alias' for EACH other topic documented here.
 \title{
-Add regularization model to TRMF object
+Add a column regularization model to TRMF object
 }
 \description{
 Adds a regularization model to TRMF object created by \code{create_TRMF()} to constrain the fitting process of the coefficient matrix. 
@@ -40,7 +40,6 @@ Chad Hammerquist
 }
 
 
-%% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
 \code{\link{train.TRMF}}, \code{\link{create_TRMF}}, \code{\link{TRMF_trend}}
